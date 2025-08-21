@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Bart Chatbot{% endblock %}
+
+{% block auth_content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="auth-icon">
+                <i class="fas fa-user-plus"></i>
+            </div>
+            <h2 class="auth-title">Create Account</h2>
+            <p class="auth-subtitle">Join Bart Chatbot and start your AI conversations</p>
+        </div>
+        
+        <form method="POST" class="auth-form">
+            <div class="form-group">
+                <label for="username" class="form-label">Username</label>
+                <div class="input-group">
+                    <span class="input-icon">
+                        <i class="fas fa-user"></i>
+                    </span>
+                    <input type="text" class="form-control" id="username" name="username" placeholder="Choose a username" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="email" class="form-label">Email</label>
+                <div class="input-group">
+                    <span class="input-icon">
+                        <i class="fas fa-envelope"></i>
+                    </span>
+                    <input type="email" class="form-control" id="email" name="email" placeholder="Enter your email" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <div class="input-group">
+                    <span class="input-icon">
+                        <i class="fas fa-lock"></i>
+                    </span>
+                    <input type="password" class="form-control" id="password" name="password" placeholder="Create a password" required>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-auth">
+                <i class="fas fa-user-plus me-2"></i>Create Account
+            </button>
+        </form>
+        
+        <div class="auth-footer">
+            <p class="auth-link-text">
+                Already have an account? 
+                <a href="{{ url_for('auth.login') }}" class="auth-link">Login here</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

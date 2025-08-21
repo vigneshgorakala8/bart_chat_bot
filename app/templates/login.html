@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Bart Chatbot{% endblock %}
+
+{% block auth_content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="auth-icon">
+                <i class="fas fa-sign-in-alt"></i>
+            </div>
+            <h2 class="auth-title">Welcome Back</h2>
+            <p class="auth-subtitle">Sign in to continue your conversations with Bart</p>
+        </div>
+        
+        <form method="POST" class="auth-form">
+            <div class="form-group">
+                <label for="username" class="form-label">Username or Email</label>
+                <div class="input-group">
+                    <span class="input-icon">
+                        <i class="fas fa-user"></i>
+                    </span>
+                    <input type="text" class="form-control" id="username" name="username" placeholder="Enter username or email" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <div class="input-group">
+                    <span class="input-icon">
+                        <i class="fas fa-lock"></i>
+                    </span>
+                    <input type="password" class="form-control" id="password" name="password" placeholder="Enter your password" required>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-auth">
+                <i class="fas fa-sign-in-alt me-2"></i>Sign In
+            </button>
+        </form>
+        
+        <div class="auth-divider">
+            <span class="divider-text">or</span>
+        </div>
+        
+        <div class="onelogin-section">
+            <a href="{{ url_for('auth.onelogin') }}" class="btn btn-onelogin btn-auth">
+                <i class="fas fa-shield-alt me-2"></i>Login with OneLogin
+            </a>
+        </div>
+        
+        <div class="auth-footer">
+            <p class="auth-link-text">
+                Don't have an account? 
+                <a href="{{ url_for('auth.register') }}" class="auth-link">Register here</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

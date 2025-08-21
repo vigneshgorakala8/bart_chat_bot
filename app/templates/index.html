@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - Bart Chatbot{% endblock %}
+
+{% block auth_content %}
+<div class="landing-page">
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <div class="hero-icon">
+                <i class="fas fa-robot"></i>
+            </div>
+            <h1 class="hero-title">
+                Welcome to <span class="highlight">Bart Chatbot</span>
+            </h1>
+            <p class="hero-subtitle">
+                Experience the power of artificial intelligence with our advanced chatbot powered by OpenAI's GPT-4o model. 
+                Start meaningful conversations and get intelligent responses instantly.
+            </p>
+            <div class="hero-buttons">
+                {% if not current_user.is_authenticated %}
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-hero">
+                        <i class="fas fa-rocket me-2"></i>Get Started Free
+                    </a>
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-outline btn-hero">
+                        <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('chat.dashboard') }}" class="btn btn-primary btn-hero">
+                        <i class="fas fa-comments me-2"></i>Start Chatting
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Why Choose Bart Chatbot?</h2>
+                <p class="section-subtitle">Discover the features that make our AI chatbot stand out from the rest</p>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3 class="feature-title">AI-Powered Intelligence</h3>
+                    <p class="feature-description">
+                        Powered by OpenAI's cutting-edge GPT-4o model, providing intelligent and contextually aware conversations.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <h3 class="feature-title">Persistent Chat History</h3>
+                    <p class="feature-description">
+                        Never lose your conversations. All your chats are securely stored and easily accessible anytime.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3 class="feature-title">Enterprise Security</h3>
+                    <p class="feature-description">
+                        Your conversations are private and protected with enterprise-grade security measures.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h3 class="feature-title">Lightning Fast</h3>
+                    <p class="feature-description">
+                        Get instant responses with our optimized infrastructure designed for speed and reliability.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h3 class="feature-title">Mobile Responsive</h3>
+                    <p class="feature-description">
+                        Chat seamlessly across all devices with our fully responsive design that adapts to any screen.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-code"></i>
+                    </div>
+                    <h3 class="feature-title">Code Support</h3>
+                    <p class="feature-description">
+                        Get help with programming, code reviews, and technical questions with syntax highlighting.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content">
+                <h2 class="cta-title">Ready to Experience the Future of AI Chat?</h2>
+                <p class="cta-subtitle">Join thousands of users who are already enjoying intelligent conversations with Bart</p>
+                {% if not current_user.is_authenticated %}
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-cta">
+                        <i class="fas fa-user-plus me-2"></i>Create Your Account
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('chat.dashboard') }}" class="btn btn-primary btn-cta">
+                        <i class="fas fa-comments me-2"></i>Start Your First Chat
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

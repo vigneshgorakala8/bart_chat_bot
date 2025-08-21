@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}{{ chat.title }} - Bart Chatbot{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2>
+                <i class="fas fa-comment me-2"></i>{{ chat.title }}
+            </h2>
+            <a href="{{ url_for('chat.dashboard') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body chat-container" id="chatContainer" style="height: 500px; overflow-y: auto;">
+                <div id="chatMessages">
+                    {% for message in messages %}
+                        <div class="message user-message mb-3">
+                            <div class="d-flex justify-content-end">
+                                <div class="message-content bg-primary text-white p-3 rounded">
+                                    <p class="mb-0">{{ message.message }}</p>
+                                    <small class="opacity-75">{{ message.timestamp }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="message ai-message mb-3">
+                            <div class="d-flex justify-content-start">
+                                <div class="message-content bg-light p-3 rounded">
+                                    <p class="mb-0">{{ message.response }}</p>
+                                    <small class="text-muted">{{ message.timestamp }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="card-footer">
+                <form id="messageForm" class="d-flex">
+                    <input type="text" id="messageInput" class="form-control me-2" 
+                           placeholder="Type your message here..." autocomplete="off">
+                    <button type="submit" class="btn btn-primary" id="sendButton">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chatContainer = document.getElementById('chatContainer');
+    const chatMessages = document.getElementById('chatMessages');
+    const messageForm = document.getElementById('messageForm');
+    const messageInput = document.getElementById('messageInput');
+    const sendButton = document.getElementById('sendButton');
+    
+    // Scroll to bottom of chat
+    function scrollToBottom() {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    
+    // Add message to chat
+    function addMessage(message, isUser = true) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'} mb-3`;
+        
+        const timestamp = new Date().toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+        
+        if (isUser) {
+            messageDiv.innerHTML = `
+                <div class="d-flex justify-content-end">
+                    <div class="message-content bg-primary text-white p-3 rounded">
+                        <p class="mb-0">${message}</p>
+                        <small class="opacity-75">${timestamp}</small>
+                    </div>
+                </div>
+            `;
+        } else {
+            messageDiv.innerHTML = `
+                <div class="d-flex justify-content-start">
+                    <div class="message-content bg-light p-3 rounded">
+                        <p class="mb-0">${message}</p>
+                        <small class="text-muted">${timestamp}</small>
+                    </div>
+                </div>
+            `;
+        }
+        
+        chatMessages.appendChild(messageDiv);
+        scrollToBottom();
+    }
+    
+    // Handle form submission
+    messageForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const message = messageInput.value.trim();
+        if (!message) return;
+        
+        // Add user message to chat
+        addMessage(message, true);
+        
+        // Clear input and disable send button
+        messageInput.value = '';
+        sendButton.disabled = true;
+        sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        try {
+            // Send message to server
+            const response = await fetch('/chat/send_message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    chat_id: {{ chat.id }},
+                    message: message
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                // Add AI response to chat
+                addMessage(data.response, false);
+            } else {
+                // Show error message
+                addMessage('Sorry, there was an error processing your message. Please try again.', false);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            addMessage('Sorry, there was an error processing your message. Please try again.', false);
+        } finally {
+            // Re-enable send button
+            sendButton.disabled = false;
+            sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
+        }
+    });
+    
+    // Scroll to bottom on page load
+    scrollToBottom();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,452 @@
+{% extends "base.html" %}
+
+{% block title %}Chat - Bart Chatbot{% endblock %}
+
+{% block content %}
+<div class="chat-interface">
+    <!-- Welcome Screen -->
+    <div class="welcome-screen" id="welcome-screen">
+        <div class="welcome-content">
+            <div class="welcome-icon">
+                <i class="fas fa-robot"></i>
+            </div>
+            <h2>Welcome to Bart Chatbot</h2>
+            <p>I'm powered by GPT-4o and ready to help you with any questions or tasks.</p>
+            <div class="welcome-suggestions">
+                <button class="suggestion-btn" onclick="sendSuggestion('Tell me about artificial intelligence')">
+                    <i class="fas fa-brain"></i>
+                    Tell me about artificial intelligence
+                </button>
+                <button class="suggestion-btn" onclick="sendSuggestion('Help me write a Python function')">
+                    <i class="fas fa-code"></i>
+                    Help me write a Python function
+                </button>
+                <button class="suggestion-btn" onclick="sendSuggestion('Explain quantum computing')">
+                    <i class="fas fa-atom"></i>
+                    Explain quantum computing
+                </button>
+                <button class="suggestion-btn" onclick="sendSuggestion('Create a creative story')">
+                    <i class="fas fa-book"></i>
+                    Create a creative story
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Messages Area -->
+    <div class="chat-messages" id="chat-messages" style="display: none;">
+        <div class="messages-container" id="messages-container">
+            <!-- Messages will be added here dynamically -->
+        </div>
+    </div>
+
+    <!-- Chat Input Area -->
+    <div class="chat-input-container">
+        <div class="input-wrapper">
+            <div class="input-group">
+                <textarea 
+                    class="form-control chat-input" 
+                    id="message-input" 
+                    placeholder="Message Bart..." 
+                    rows="1"
+                    maxlength="4000"
+                ></textarea>
+                <button class="btn btn-primary send-btn" id="send-btn" disabled>
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+            <div class="input-footer">
+                <small class="text-muted">Bart can make mistakes. Consider checking important information.</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentChatId = null;
+let isTyping = false;
+
+// Get current user's initial from username or email
+function getCurrentUserInitial() {
+    // Try to get from the sidebar user info
+    const usernameElement = $('.user-details h6');
+    const emailElement = $('.user-details small');
+    
+    if (usernameElement.length > 0) {
+        const username = usernameElement.text().trim();
+        if (username) {
+            return username.charAt(0).toUpperCase();
+        }
+    }
+    
+    if (emailElement.length > 0) {
+        const email = emailElement.text().trim();
+        if (email) {
+            return email.charAt(0).toUpperCase();
+        }
+    }
+    
+    // Fallback to 'U' if no user info found
+    return 'U';
+}
+
+// Initialize the chat interface
+$(document).ready(function() {
+    loadChatHistory();
+    setupEventListeners();
+    autoResizeTextarea();
+    updateUserAvatars();
+});
+
+// Update all user avatars with initials
+function updateUserAvatars() {
+    const userInitial = getCurrentUserInitial();
+    
+    // Update sidebar avatar if it doesn't have the initial
+    const sidebarAvatar = $('.user-avatar span');
+    if (sidebarAvatar.length === 0) {
+        $('.user-avatar').html(`<span>${userInitial}</span>`);
+    }
+}
+
+function setupEventListeners() {
+    // Send button click
+    $('#send-btn').click(sendMessage);
+    
+    // Enter key to send (Shift+Enter for new line)
+    $('#message-input').on('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+    
+    // Auto-resize textarea
+    $('#message-input').on('input', autoResizeTextarea);
+    
+    // New chat button
+    $('#new-chat-btn').click(createNewChat);
+    
+    // Sidebar toggle
+    $('#sidebar-toggle').click(toggleSidebar);
+}
+
+function autoResizeTextarea() {
+    const textarea = $('#message-input');
+    textarea.css('height', 'auto');
+    textarea.css('height', Math.min(textarea[0].scrollHeight, 200) + 'px');
+    
+    // Enable/disable send button
+    const hasText = textarea.val().trim().length > 0;
+    $('#send-btn').prop('disabled', !hasText || isTyping);
+}
+
+function loadChatHistory() {
+    $.get('/chat/api/chats', function(data) {
+        const chatHistory = $('#chat-history');
+        chatHistory.empty();
+        
+        if (data.chats.length === 0) {
+            chatHistory.append('<div class="no-chats">No conversations yet</div>');
+            return;
+        }
+        
+        data.chats.forEach(chat => {
+            const chatItem = $(`
+                <div class="chat-item" data-chat-id="${chat.id}">
+                    <div class="chat-item-content">
+                        <i class="fas fa-comment"></i>
+                        <span class="chat-title">${chat.title || 'New Chat'}</span>
+                    </div>
+                    <button class="btn btn-sm btn-link delete-chat" data-chat-id="${chat.id}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `);
+            
+            chatItem.click(function() {
+                loadChat(chat.id);
+            });
+            
+            chatItem.find('.delete-chat').click(function(e) {
+                e.stopPropagation();
+                deleteChat(chat.id);
+            });
+            
+            chatHistory.append(chatItem);
+        });
+    });
+}
+
+function createNewChat() {
+    // Reset to new chat mode without creating database record
+    currentChatId = null;
+    resetChatInterface();
+    $('#welcome-screen').hide();
+    $('#chat-messages').show();
+    $('#messages-container').empty();
+    $('#chat-title').text('New Chat');
+    
+    // Focus on input
+    $('#message-input').focus();
+}
+
+function loadChat(chatId) {
+    currentChatId = chatId;
+    
+    $.get(`/chat/api/chat/${chatId}`, function(data) {
+        $('#chat-title').text(data.chat.title || 'Chat');
+        displayMessages(data.messages);
+        $('#welcome-screen').hide();
+        $('#chat-messages').show();
+        
+        // Highlight current chat in sidebar
+        $('.chat-item').removeClass('active');
+        $(`.chat-item[data-chat-id="${chatId}"]`).addClass('active');
+    });
+}
+
+function displayMessages(messages) {
+    const container = $('#messages-container');
+    container.empty();
+    
+    messages.forEach(message => {
+        appendMessage(message.message, 'user');
+        appendMessage(message.response, 'assistant');
+    });
+    
+    // Apply syntax highlighting to all code blocks
+    if (typeof Prism !== 'undefined') {
+        container.find('pre code').each(function() {
+            Prism.highlightElement(this);
+        });
+    }
+    
+    scrollToBottom();
+}
+
+function appendMessage(content, role) {
+    let avatarContent;
+    if (role === 'user') {
+        // Get user's first letter from username or email
+        const userInitial = getCurrentUserInitial();
+        avatarContent = `<span>${userInitial}</span>`;
+    } else {
+        avatarContent = '<i class="fas fa-robot"></i>';
+    }
+    
+    const messageDiv = $(`
+        <div class="message ${role}-message">
+            <div class="message-avatar">
+                ${avatarContent}
+            </div>
+            <div class="message-content">
+                <div class="message-text">${formatMessage(content)}</div>
+            </div>
+        </div>
+    `);
+    
+    $('#messages-container').append(messageDiv);
+    
+    // Apply syntax highlighting to code blocks
+    if (typeof Prism !== 'undefined') {
+        messageDiv.find('pre code').each(function() {
+            Prism.highlightElement(this);
+        });
+    }
+    
+    scrollToBottom();
+}
+
+function formatMessage(content) {
+    // Handle code blocks (```language ... ```)
+    content = content.replace(/```(\w+)?\n([\s\S]*?)```/g, function(match, language, code) {
+        const lang = language || 'text';
+        return `<pre class="code-block"><code class="language-${lang}">${escapeHtml(code.trim())}</code></pre>`;
+    });
+    
+    // Handle inline code (`code`)
+    content = content.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+    
+    // Handle bold text (**text**)
+    content = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // Handle italic text (*text*)
+    content = content.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    
+    // Handle line breaks
+    content = content.replace(/\n/g, '<br>');
+    
+    return content;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function sendMessage() {
+    const messageInput = $('#message-input');
+    const message = messageInput.val().trim();
+    
+    if (!message || isTyping) return;
+    
+    // Add user message to chat immediately
+    appendMessage(message, 'user');
+    messageInput.val('');
+    autoResizeTextarea();
+    
+    // Show typing indicator
+    showTypingIndicator();
+    
+        // If no current chat, create one first
+    if (!currentChatId) {
+        $.ajax({
+            url: '/chat/new',
+            method: 'POST',
+            data: {
+                first_message: message
+            },
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(data) {
+                if (data.success) {
+                    currentChatId = data.chat_id;
+                    // Update chat title if generated
+                    if (data.title) {
+                        $('#chat-title').text(data.title);
+                    }
+                    
+                    // If AI response was already generated for the first message
+                    if (data.has_first_message && data.ai_response) {
+                        hideTypingIndicator();
+                        appendMessage(data.ai_response, 'assistant');
+                        loadChatHistory(); // Refresh chat list
+                    } else {
+                        // Send message to server (this shouldn't happen with the new logic)
+                        sendMessageToServer(message);
+                    }
+                } else {
+                    hideTypingIndicator();
+                    appendMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+                }
+            },
+            error: function(xhr, status, error) {
+                hideTypingIndicator();
+                console.error('Error creating chat:', xhr.responseText);
+                appendMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+            }
+        });
+    } else {
+        // Send message to existing chat
+        sendMessageToServer(message);
+    }
+}
+
+function sendMessageToServer(message) {
+    $.ajax({
+        url: '/chat/send_message',
+        method: 'POST',
+        data: {
+            chat_id: currentChatId,
+            message: message
+        },
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        success: function(data) {
+            hideTypingIndicator();
+            if (data.success) {
+                appendMessage(data.response, 'assistant');
+                loadChatHistory(); // Refresh chat list
+            } else {
+                appendMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+            }
+        },
+        error: function(xhr, status, error) {
+            hideTypingIndicator();
+            console.error('Error sending message:', xhr.responseText);
+            appendMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+        }
+    });
+}
+
+function sendSuggestion(text) {
+    // If we're on welcome screen, switch to chat interface first
+    if ($('#welcome-screen').is(':visible')) {
+        createNewChat();
+    }
+    
+    $('#message-input').val(text);
+    sendMessage();
+}
+
+function showTypingIndicator() {
+    isTyping = true;
+    $('#send-btn').prop('disabled', true);
+    
+    const typingDiv = $(`
+        <div class="message assistant-message typing-indicator">
+            <div class="message-avatar">
+                <i class="fas fa-robot"></i>
+            </div>
+            <div class="message-content">
+                <div class="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </div>
+    `);
+    
+    $('#messages-container').append(typingDiv);
+    scrollToBottom();
+}
+
+function hideTypingIndicator() {
+    isTyping = false;
+    $('.typing-indicator').remove();
+    autoResizeTextarea();
+}
+
+function deleteChat(chatId) {
+    if (confirm('Are you sure you want to delete this conversation?')) {
+        $.ajax({
+            url: `/chat/delete/${chatId}`,
+            method: 'DELETE',
+            success: function(data) {
+                if (data.success) {
+                    if (currentChatId === chatId) {
+                        resetChatInterface();
+                    }
+                    loadChatHistory();
+                }
+            }
+        });
+    }
+}
+
+function resetChatInterface() {
+    currentChatId = null;
+    $('#welcome-screen').show();
+    $('#chat-messages').hide();
+    $('#messages-container').empty();
+    $('#chat-title').text('Bart Chatbot');
+    $('.chat-item').removeClass('active');
+}
+
+function toggleSidebar() {
+    $('#sidebar').toggleClass('collapsed');
+}
+
+function scrollToBottom() {
+    const container = $('#messages-container');
+    container.scrollTop(container[0].scrollHeight);
+}
+</script>
+{% endblock %}
