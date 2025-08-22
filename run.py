@@ -18,7 +18,8 @@ login_manager.login_view = 'auth.login'
 @login_manager.user_loader
 def load_user(user_id):
     """Load user for Flask-Login"""
-    return User.query.get(int(user_id))
+    from app import db
+    return db.session.get(User, int(user_id))
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

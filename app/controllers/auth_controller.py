@@ -24,14 +24,24 @@ class AuthController:
         Returns:
             tuple: (success, message, user)
         """
+        import pdb; pdb.set_trace()  # Debug breakpoint
+        
         try:
+            print(f"DEBUG: Starting user registration for {username}")
+            
             # Check if username already exists
-            if User.query.filter_by(username=username).first():
+            existing_user = User.query.filter_by(username=username).first()
+            if existing_user:
+                print(f"DEBUG: Username {username} already exists")
                 return False, 'Username already exists', None
             
             # Check if email already exists
-            if User.query.filter_by(email=email).first():
+            existing_email = User.query.filter_by(email=email).first()
+            if existing_email:
+                print(f"DEBUG: Email {email} already registered")
                 return False, 'Email already registered', None
+            
+            print(f"DEBUG: Creating new user")
             
             # Create new user
             user = User(
@@ -40,12 +50,18 @@ class AuthController:
                 password_hash=generate_password_hash(password)
             )
             
+            print(f"DEBUG: User object created: {user}")
+            
             db.session.add(user)
+            print(f"DEBUG: User added to session")
+            
             db.session.commit()
+            print(f"DEBUG: User committed to database")
             
             return True, 'Registration successful! Please login.', user
             
         except Exception as e:
+            print(f"DEBUG: Exception occurred: {str(e)}")
             db.session.rollback()
             return False, f'Registration failed: {str(e)}', None
     
@@ -101,7 +117,8 @@ class AuthController:
         Returns:
             User: User object or None
         """
-        return User.query.get(user_id)
+        from app import db
+        return db.session.get(User, user_id)
     
     @staticmethod
     def get_user_by_username(username):

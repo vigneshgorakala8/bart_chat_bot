@@ -13,34 +13,22 @@ def create_database():
     
     print("=== AI Chatbot Database Setup ===\n")
     
-    # Get database configuration
-    print("Please provide the following information:")
-    db_host = input("Database host (default: localhost): ").strip() or "localhost"
-    db_port = input("Database port (default: 5432): ").strip() or "5432"
-    admin_user = input("PostgreSQL admin username (default: postgres): ").strip() or "postgres"
-    admin_password = input("PostgreSQL admin password: ").strip()
-    
-    if not admin_password:
-        print("Error: Admin password is required!")
-        return False
-    
-    # Database and user details
+    # Direct database configuration
+    db_host = "localhost"
+    db_port = "5432"
+    admin_user = "postgres"
     db_name = "chatbot_db"
-    db_user = "chatbot_user"
-    db_password = input("Password for chatbot_user: ").strip()
     
-    if not db_password:
-        print("Error: Password for chatbot_user is required!")
-        return False
+    # Database URL for the application
+    database_url = "postgresql://postgres@localhost/chatbot_db"
     
     try:
         # Connect to PostgreSQL as admin
-        print("\nConnecting to PostgreSQL...")
+        print("Connecting to PostgreSQL...")
         conn = pg8000.connect(
             host=db_host,
             port=db_port,
-            user=admin_user,
-            password=admin_password
+            user=admin_user
         )
         conn.autocommit = True
         cursor = conn.cursor()
@@ -55,46 +43,30 @@ def create_database():
             cursor.execute(f"CREATE DATABASE {db_name}")
             print(f"Database '{db_name}' created successfully!")
         
-        # Check if user exists
-        cursor.execute("SELECT 1 FROM pg_user WHERE usename = %s", (db_user,))
-        if cursor.fetchone():
-            print(f"User '{db_user}' already exists.")
-        else:
-            # Create user
-            print(f"Creating user '{db_user}'...")
-            cursor.execute(f"CREATE USER {db_user} WITH PASSWORD '{db_password}'")
-            print(f"User '{db_user}' created successfully!")
-        
-        # Grant privileges
-        print("Granting privileges...")
-        cursor.execute(f"GRANT ALL PRIVILEGES ON DATABASE {db_name} TO {db_user}")
-        cursor.execute(f"GRANT CONNECT ON DATABASE {db_name} TO {db_user}")
-        
         # Close admin connection
         cursor.close()
         conn.close()
         
-        # Test connection with new user
-        print("Testing connection with new user...")
+        # Test connection
+        print("Testing connection...")
         test_conn = pg8000.connect(
             host=db_host,
             port=db_port,
             database=db_name,
-            user=db_user,
-            password=db_password
+            user=admin_user
         )
         test_conn.close()
         print("Connection test successful!")
         
-        # Generate .env file content
-        database_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+        # Create database tables
+        print("Creating database tables...")
+        create_tables(database_url)
         
         print("\n=== Setup Complete! ===")
         print(f"Database: {db_name}")
-        print(f"User: {db_user}")
         print(f"Database URL: {database_url}")
         
-        # Create .env file
+        # Create .env file with OneLogin configuration
         env_content = f"""# Flask Configuration
 SECRET_KEY=your-secret-key-here-change-this-in-production
 
@@ -103,6 +75,12 @@ DATABASE_URL={database_url}
 
 # OpenAI Configuration
 OPENAI_API_KEY=your-openai-api-key-here
+
+# OneLogin Configuration
+ONELOGIN_URL=https://bart.onelogin.com/
+ONELOGIN_CLIENT_ID=9ae7dbc0-88ce-013d-c8db-223c7d66b5e8136836
+ONELOGIN_CLIENT_SECRET=770eca7bd57a5f5f230cc6947e41fdac0d074b942726c73d11b1f056e7ec661e
+ONELOGIN_REDIRECT_URI=http://localhost:5001/auth/callback
 """
         
         with open('.env', 'w') as f:
@@ -120,10 +98,36 @@ OPENAI_API_KEY=your-openai-api-key-here
         print(f"Error: {e}")
         return False
 
+def create_tables(database_url):
+    """Create database tables using Flask-SQLAlchemy."""
+    try:
+        # Set environment variable for database URL
+        os.environ['DATABASE_URL'] = database_url
+        
+        # Import Flask app and create tables
+        from app import create_app, db
+        
+        app = create_app()
+        
+        with app.app_context():
+            # Create all tables
+            db.create_all()
+            print("Database tables created successfully!")
+            
+            # Verify tables were created
+            from sqlalchemy import inspect
+            inspector = inspect(db.engine)
+            tables = inspector.get_table_names()
+            print(f"Created tables: {', '.join(tables)}")
+            
+    except Exception as e:
+        print(f"Error creating tables: {e}")
+        raise
+
 def main():
     """Main function."""
     if create_database():
-        print("\nYou can now run the application with: python app.py")
+        print("\nYou can now run the application with: python run.py")
     else:
         print("\nDatabase setup failed. Please check your PostgreSQL configuration.")
         sys.exit(1)
